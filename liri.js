@@ -1,76 +1,166 @@
-require("dotenv").config();
 var keys = require("./keys.js");
-var spotify = new Spotify(keys.spotify);
-
-// concert-this
-// <artist/band name here>
-
-// This will search the Bands in Town Artist Events API ("https://rest.bandsintown.com/artists/" + artist + "/events?app_id=codingbootcamp") for an artist and render the following information about each event to the terminal:
-
-// Name of the venue
-
-// Venue location
-
-// Date of the Event (use moment to format this as "MM/DD/YYYY")
+var Twitter = require("twitter");
+var Spotify = require('node-spotify-api');
+var request = require("request");
+var fs = require("fs");
+var util = require("util");
 
 
 
-// spotify-this-song
-// This will show the following information about the song in your terminal/bash window
-
-// Artist(s)
-
-// The song's name
-
-// A preview link of the song from Spotify
-
-// The album that the song is from
-
-// If no song is provided then your program will default to "The Sign" by Ace of Base.
-
-// You will utilize the node-spotify-api package in order to retrieve song information from the Spotify API.
-
-// The Spotify API requires you sign up as a developer to generate the necessary credentials. You can follow these steps in order to generate a client id and client secret:
-
-// Step One: Visit https://developer.spotify.com/my-applications/#!/
-
-// Step Two: Either login to your existing Spotify account or create a new one (a free account is fine) and log in.
-
-// Step Three: Once logged in, navigate to https://developer.spotify.com/my-applications/#!/applications/create to register a new application to be used with the Spotify API. You can fill in whatever you'd like for these fields. When finished, click the "complete" button.
-
-// Step Four: On the next screen, scroll down to where you see your client id and client secret. Copy these values down somewhere, you'll need them to use the Spotify API and the node-spotify-api package
+var command = process.argv[2];
 
 
 
+// Twitter --------------------------------------------------------------------
+var twitter = new Twitter(keys.twitterKeys);
+
+// Get Tweet function
+function getTweets() {
+  twitter.get(
+    'statuses/user_timeline', { screen_name: "nicolesowell2", count: 5 },
+    function(error, tweets, response) {
+      if (error) {
+      	console.log('Something broke...');
+        console.log(error);
+        return;
+      }
+
+      for (var i = 0; i < tweets.length; i++) {
+        console.log(`####################################################### `);
+
+        console.log("Posted at: " + tweets[i].created_at);
+        console.log("Tweet: " + tweets[i].text);
+        console.log("");
+      }
+
+    });
+};
+
+
+// Spotify -----------------------------------------------------------------------
+if (process.argv[4] === undefined || process.argv[4] === null) {
+    var song = process.argv[3];
+    // console.log(song);
+
+} else if (process.argv[4] !== undefined || process.argv[4] !== null) {
+    var song = process.argv[3] + ' ' + process.argv[4];
+    // console.log(song);
+    
+} else {
+    console.log('Please enter a valid song');
+    
+}
+
+
+var spotify = new Spotify(keys.spotifyKeys);
+
+// Get Spotify songs function
+function getSpotifySong(song) {
+    if (song === undefined || song === null) {
+        song = 'The Sign';
+    } else {
+        
+    }
+
+    spotify
+    .search({ type: 'track', query: song, limit: 1 })
+    .then(function(response) {
+        
+        console.log(`#######################################################
+        Song: ${song} 
+        
+        Artist: ${response.tracks.items[0].album.artists[0].name}
+        
+        Album: ${response.tracks.items[0].album.name}
+        Preview URL: ${response.tracks.items[0].preview_url} `);
+        
+
+
+    })
+    .catch(function(err) {
+      console.log(err);
+    });
+};
 
 
 
 
-// movie-this
-// This will output the following information to your terminal/bash window:
+// OMDB ------------------------------------------------------------------------------
 
-//   * Title of the movie.
-//   * Year the movie came out.
-//   * IMDB Rating of the movie.
-//   * Rotten Tomatoes Rating of the movie.
-//   * Country where the movie was produced.
-//   * Language of the movie.
-//   * Plot of the movie.
-//   * Actors in the movie.
-// If the user doesn't type a movie in, the program will output data for the movie 'Mr. Nobody.'
+// Get movies from OMDB API function 
+function getMovie(movie) {
+    if (movie === undefined || movie === null) {
+        movie = "Mr Nobody";
+    }
+    var requestUrl = "https://www.omdbapi.com/?t=" + movie + "&y=&plot=short&apikey=" + keys.omdbapiKey.apiKey;
+    request.get({ url: requestUrl }, function (error, response, body) {
 
-// If you haven't watched "Mr. Nobody," then you should: http://www.imdb.com/title/tt0485947/
+        body = JSON.parse(body);
+        if (error || body.Response === "False" || body.Error === "Movie not found!") {
+            console.log("movie not found");
+            return;
+        }
 
-// It's on Netflix!
+        console.log("Year of release: " + body.Year);
+        console.log("IMDB Rating: " + body.imdbRating);
+        for (var i = 0; i < body.Ratings.length; i++) {
+            if (body.Ratings[i].Source === "Rotten Tomatoes") {
+                console.log("Rotten Tomatoes Rating: " + body.Ratings[i].Value);
+            }
+        }
+        console.log("Country of production: " + body.Country);
+        console.log("Language of movie: " + body.Language);
+        console.log("Plot: " + body.Plot);
+        console.log("Actors: " + body.Actors);
+    });
 
-// You'll use the axios package to retrieve data from the OMDB API. Like all of the in-class activities, the OMDB API requires an API key. You may use trilogy.
+}
+
+
+// Get text from random.txt and pass it as a command to liri, function
+function doWhatItSays() {
+    fs.readFile('./random.txt', (err, data) => {
+        if (err) throw err;
+        console.log(data);
+        
+      });
+    
+
+    }
+    
 
 
 
 
-// do-what-it-says
-// Using the fs Node package, LIRI will take the text inside of random.txt and then use it to call one of LIRI's commands.
+switch (command) {
+    case 'my-tweets':
+        util.log(`Getting tweets. . .`);  
+        getTweets();
 
-// It should run spotify-this-song for "I Want it That Way," as follows the text in random.txt.
+        break;
 
-// Edit the text in random.txt to test out the feature for movie-this and concert-this.
+    case 'spotify-this-song':
+        util.log('Getting song . . .')
+        getSpotifySong(song);
+
+        break;
+
+    case 'omdbGetMovie':
+        util.log('Getting movie . . .')
+        var movie = process.argv[3];
+        getMovie(movie);
+
+        break;
+
+    case 'do-what-it-says':
+        util.log('Getting text from random.txt . . .');
+        doWhatItSays(data);
+        
+        break;
+
+    default:
+        util.log('Please enter a valid command');
+        
+        break;
+}
+
